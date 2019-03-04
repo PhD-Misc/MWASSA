@@ -1,3 +1,64 @@
 #!/usr/bin/python
 
-print("hello")
+from astropy.io import fits
+import matplotlib.pyplot as plt
+import numpy as np
+import astropy
+from astropy.wcs import WCS
+import ephem
+import time
+from datetime import datetime, timedelta
+from array import *
+import os.path
+from argparse import ArgumentParser
+
+
+def main():
+    parser = ArgumentParser("plotTLE", description="Plots the objects from TLE catalog over an fits image")
+    parser.add_argument('--file1', required=True, help='The input 1st fits image')
+    parser.add_argument('--file2', required=True, help='The input 2nd fits image')
+    parser.add_argument('--tle', required=True, help='The TLE catalog at the local ephoc')
+    parser.add_argument('--imgSize', help='The number of pixels in the fits image')
+    args = iparser.parse_args()
+
+    #The real game starts here
+    mwa = ephem.Observer()
+    mwa.lon = '116:40:14.93485'
+    mwa.lat = '-26:42:11.94986'
+    mwa.elevation = 377.827 #from sea level
+
+    hdu1 = fits.open(args.file1)
+    hdu2 = fits.open(args.file2)
+    header = hdu2[0].header
+    wcs = WCS(header, naxis=2)
+    UTCtime = datetime.strptime(header['DATE-OBS'][:-2], '%Y-%m-%dT%H:%M:%S') +timedelta(seconds=0)
+    mwa.date = UTCtime
+    line1 = 'SATELLITE'
+    diff = hdu2[0].data[0,0,:,:] - hdu1[0].data[0,0,:,:]
+
+    plt.imshow(diff)
+    f = open(args.tle)
+    line = f.readline()
+    counter = 1
+    while line:
+        if counter%2 ==1:
+            line2=line
+        else:
+            line3=line
+            sat=ephem.readtle(str(line1), str(line2),str(line3))
+            sat.compute(mwa)
+            x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]
+            if (0 <= x < diff.shape[0]) and (0 <= y < diff.shape[1]):
+                plt.plot(x,y, marker='+', color='black')
+        print('reading line ' +str(counter))
+        counter += 1
+        line = f.readline()
+    plt.show()
+    print("Exiting plotTLE")
+    print("@uthor - steve prabu")
+
+
+if _name_ == '_main_':
+    main()
+
+
