@@ -1,0 +1,50 @@
+#!/usr/bin/python
+
+from astropy.io import fits
+import matplotlib.pyplot as plt
+import numpy as np
+import astropy 
+from astropy.wcs import WCS
+import ephem
+import time
+from datetime import datatime, timedelta
+from array import *
+import os.path
+from argparse import ArgumentParser
+
+
+def main():
+	parser = ArgumentParser("imageDiff", description='Makes difference images from fits images')
+        parser.add_argument('--filename', required=True, help="The name of the fits images eg 123456-t")
+        parser.add_argument('--numOfImg', required=True, help='The number of difference images to be made')
+        parser.add_argument('--vmax', help="The maximum limit in the colorbar")
+        parser.add_argument('--vmin', help="The minimum limit in the colorbar")
+        parser.add_argument('--colormap', default=viridis, help="The colormap used to make images")
+        parser.add_argument('--z', default=4, help="The zfill value")
+        parser.add_argument("--imgToUse", default="-image.fits", help="if to use dirty.fits or image.fits eg --imgToUse=-image.fits")
+        parser.add_argument("--imgShow", default=False, help="Change to True in order to show before saving")
+
+        args = parser.parse_args()
+
+
+        for i in range(args.numOfImg):
+            hdu1 = fits.open(args.filename + str(i).zfill(args.z) + args.imgToUse)
+            hdu2 = fits.open(args.filename + str(i).zfill(args.z) + args.imgToUse)
+
+            diff = hdu2[0].data[0,0,:,:] - hdu1[0].data[0,0,:,:]
+
+            wcs = WCS(hdu2[0].header, naxis=2)
+            plt.figure().add_subplot(1,1,1, projection=wcs)
+            plt.imshow(diff, vmax=args.vmax, vmin=args.vmin, cmap=plt.cm.args.colormap)
+            plt.colorbar()
+            plt.grid(color='white', linestyle='--')
+            if args.imgShow == True:
+                plt.show()
+            plt.savefig('DiffImage' + args.filename + "-" + str(i).zfill(4) + ".png"
+            print("Terminating imgDiff")
+
+
+
+
+if __name__ == "__main__":
+	main()
