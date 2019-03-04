@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--file2', required=True, help='The input 2nd fits image')
     parser.add_argument('--tle', required=True, help='The TLE catalog at the local ephoc')
     parser.add_argument('--imgSize', help='The number of pixels in the fits image')
-    args = iparser.parse_args()
+    args = parser.parse_args()
 
     #The real game starts here
     mwa = ephem.Observer()
