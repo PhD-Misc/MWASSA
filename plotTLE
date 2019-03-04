@@ -55,7 +55,7 @@ def main():
         line = f.readline()
     plt.show()
     print("Exiting plotTLE")
-    print("@uthor - steve prabu")
+    
 
 
 if _name_ == '_main_':
