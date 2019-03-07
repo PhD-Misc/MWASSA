@@ -31,7 +31,7 @@ def main():
 
     args=parser.parse_args()
     
-    snr_array = [None]*args.numFreq
+    snr_array = [None]*int(args.numFreq)
     for f in range(args.numFreq):
         hdu1 = fits.open(args.file1 + str(f).zfill(4) + "-image.fits")
         hdu2 = fits.open(args.file2 + str(f).zfill(4) + "-image.fits")
