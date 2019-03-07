@@ -1,0 +1,55 @@
+#!/usr/bin/python
+
+from astropy.io import fits
+import matplotlib.pyplot as plt
+import numpy as np
+import astropy
+from astropy.wcs import WCS
+import ephem
+import time
+from datetime import datetime, timedelta
+from array import *
+import os.path
+from astropy.nddata import Cutout2D
+import math
+import matplotlib.patches as patches
+from argparse import ArgumentParser
+
+
+
+def main():
+    parser = ArgumentParser("oneTimeStepWaterfall", description='Make waterfall plot for a given location for the number of given freq channels')
+    parser.add_argument('--file1', required=True, help="The name of the first fits image")
+    parser.add_argument("--file2", required=True, help="The name of the second fits image")
+    parser.add_argument("--numFreq", required=True, help="The number of fine channels to plot")
+    parser.add_argument("--x", required=True, help="The x location of the box")
+    parser.add_argument("--y", required=True, help="The y location of the box")
+    parser.add_argument("--size", required=True, help="The size of the box")
+    parser.add_argument("--xNoise", required=True, help="The x location to calculate Noise")
+    parser.add_argument("--yNoise", required=True, help="The y location to calculate noise")
+    parser.add_argument("--sizeNoise", required=True, help="The size of the box used to calculate the noise of the differenc image")
+
+    args=parser.parse_args()
+    
+    snr_array = [None]*args.numFreq
+    for f in range(args.numFreq):
+        hdu1 = fits.open(args.file1 + str(f).zfill(4) + "-image.fits")
+        hdu2 = fits.open(args.file2 + str(f).zfill(4) + "-image.fits")
+
+        diff = hdu2[0].data[0,0,:,:] - hdu1[0].data[0,0,:,:]
+
+        signal = Cutout2D(diff, (args.x, args.y), (args.size, args.size))
+        noise = Cutout2D(diff, (args.xNoise, args.yNoise), (args.sizeNoise,args.sizeNoise))
+
+        signal_sum = np.sum(signal.data)
+        noise_rms = np.sqrt(np.mean(noise.data**2))
+
+        snr_array[f] = signal_sum/noise_rms
+    i_array = np.linspace(72.335, 103.015, args.numFreq)
+    plt.plot(i_array, snr_array)
+    plt.show()
+
+
+
+if __name__ == "__main__":
+    main()
