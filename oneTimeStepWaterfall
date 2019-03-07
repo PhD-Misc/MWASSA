@@ -37,15 +37,15 @@ def main():
         hdu2 = fits.open(args.file2 + str(f).zfill(4) + "-image.fits")
 
         diff = hdu2[0].data[0,0,:,:] - hdu1[0].data[0,0,:,:]
-
-        signal = Cutout2D(diff, (args.x, args.y), (args.size, args.size))
-        noise = Cutout2D(diff, (args.xNoise, args.yNoise), (args.sizeNoise,args.sizeNoise))
+        print("working on channel " + str(f))
+        signal = Cutout2D(diff, (int(args.x), int(args.y)), (int(args.size), int(args.size)))
+        noise = Cutout2D(diff, (int(args.xNoise), int(args.yNoise)), (int(args.sizeNoise),int(args.sizeNoise)))
 
         signal_sum = np.sum(signal.data)
         noise_rms = np.sqrt(np.mean(noise.data**2))
 
         snr_array[f] = signal_sum/noise_rms
-    i_array = np.linspace(72.335, 103.015, args.numFreq)
+    i_array = np.linspace(72.335, 103.015, int(args.numFreq))
     plt.plot(i_array, snr_array)
     plt.show()
 
