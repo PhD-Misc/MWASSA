@@ -118,11 +118,11 @@ def main():
 			plt.grid()
 			
 
-			delay = [-6, -4, -2, 2, 4, 6]
+			delay = [-12, -8, -5, 5, 8, 12]
 			
 			for d in delay:
 				time_temp = UTCtime + timedelta(seconds=int(d))
-				mwa.date = time
+				mwa.date = time_temp
 				fl = open('tle.txt')
 				line = fl.readline()
 				counter = 1
@@ -136,7 +136,7 @@ def main():
 						sat.compute(mwa)
 						x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]	
 						if (0 <= x < 2000) and (0 <= y < 2000):
-							plt.plot(x,y, marker=',', color='white')
+							plt.plot(x,y, marker='.', color='white', markersize='1')
 					counter += 1
 					line = fl.readline()
 
@@ -159,9 +159,11 @@ def main():
 				counter += 1
 				line = fl.readline()	
 
-			for d in delay:
-                                time_temp = UTCtime + timedelta(seconds=int(d))
-                                mwa.date = time
+			delayMEO = [-10, -5, 5, 10]
+
+			for dMEO in delayMEO:
+                                time_temp = UTCtime + timedelta(minutes=int(dMEO))
+                                mwa.date = time_temp
                                 fl = open('MEOtle.txt')
                                 line = fl.readline()
                                 counter = 1
@@ -175,7 +177,7 @@ def main():
                                                 sat.compute(mwa)
                                                 x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]
                                                 if (0 <= x < 2000) and (0 <= y < 2000):
-                                                        plt.plot(x,y, marker=',', color='green')
+                                                        plt.plot(x,y, marker='.', color='green', markersize='1')
                                         counter += 1
                                         line = fl.readline()
 
