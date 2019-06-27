@@ -1,0 +1,192 @@
+#!/usr/bin/python
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from astropy.io import fits
+import numpy as np
+from astropy.wcs import WCS
+from astropy.nddata import Cutout2D
+import os.path
+from argparse import ArgumentParser
+import ephem
+import time
+from datetime import datetime, timedelta
+
+#The below sets MWA as the observer
+mwa = ephem.Observer()
+mwa.lon = '116:40:14.93485'
+mwa.lat = '-26:42:11.94986'
+mwa.elevation = 377.827 #from sea level
+
+
+def main():
+	parser = ArgumentParser("Flagger", description="Flagges and plots DSNRS for RFI")
+	parser.add_argument('--obs', required=True, help="The observation id")
+	parser.add_argument('--freq', required=True,type=int, help="The frequency channel")
+	parser.add_argument('--timeSteps', required=True, type=int, help="The number of time steps")
+	parser.add_argument('--sigma', default=8, help="The sigma threshold for RFI" )
+	args = parser.parse_args()
+
+	f = int(args.freq)
+	for i in range(int(args.timeSteps)):
+		hdu1 = fits.open(str(args.obs) + "-2m-" + str(i) + "-" + str(f).zfill(4) + "-dirty.fits")
+		hdu2 = fits.open(str(args.obs) + "-2m-" + str(i+1) + "-" + str(f).zfill(4) + "-dirty.fits")
+		diff = hdu2[0].data[0,0,:,:] - hdu1[0].data[0,0,:,:]
+		#print("Working on timeStep " + str(i) + "/150")
+		if np.all(diff == 0):
+			continue
+		rms = np.sqrt(np.mean(diff**2))
+		clippingValue = rms*float(args.sigma)
+		points = np.where(diff >= clippingValue)
+                points = np.asarray(points)
+                UTCtime = datetime.strptime(hdu2[0].header['DATE-OBS'][:-2], '%Y-%m-%dT%H:%M:%S')                  
+		for p in range(len(points[0,:])):
+			#print("RFI detected")
+			maxPoint = points[:,p]
+			wcs = WCS(hdu2[0].header, naxis=2)	
+			cutout = Cutout2D(diff, (maxPoint[1], maxPoint[0]), (100, 100), wcs=wcs)
+			ax = plt.subplot(2,2,1, projection=cutout.wcs)
+			plt.imshow(cutout.data, cmap=plt.cm.inferno, origin="lower")
+			plt.grid(color='black', linestyle='-')
+			plt.title("The time step is " +str(i) + " and the fine channel is " + str(f))
+			plt.colorbar()
+			snr_array = [None]*768
+			for fineChannel in range(768):
+				#print("Plotting Spectrum for RFI at freq " + str(fineChannel))
+				hdutemp1 = fits.open(str(args.obs) +"-2m-" + str(i) + "-" + str(fineChannel).zfill(4) + "-dirty.fits")	
+				hdutemp2 = fits.open(str(args.obs) +"-2m-" + str(i+1) + "-" + str(fineChannel).zfill(4) + "-dirty.fits")
+				diff2 = hdutemp2[0].data[0,0,:,:] - hdutemp1[0].data[0,0,:,:]
+				signal = Cutout2D(diff2, (maxPoint[1], maxPoint[0]),(5,5))
+				noise = Cutout2D(diff2, (750, 750),(200,200))
+				signal_sum =np.sum(signal.data)/25.0
+				noise_rms = np.sqrt(np.mean(noise.data**2))
+				snr_array[fineChannel] = signal_sum/noise_rms
+			i_array = np.linspace(81.68, 111.6 , 768)
+			
+			plt.subplot(2,2,2)
+			plt.plot(i_array, snr_array)
+
+                    
+                        ## This is to plot the band of Starlink orbits
+                  	topImage = Cutout2D(hdu2[0].data[0,0,:,:], (maxPoint[1], maxPoint[0]), (100, 100), wcs=wcs)
+			ax = plt.subplot(2,2,3, projection=topImage.wcs)
+                  	plt.imshow(topImage.data, cmap=plt.cm.inferno, origin="lower")
+                        plt.grid()
+			plt.colorbar()      
+
+			ax = plt.subplot(2,2,4, projection=wcs)
+			plt.imshow(diff, cmap=plt.cm.inferno, origin="lower")
+			time = UTCtime
+			mwa.date = time
+			fl = open('starlinkTLE_all_tle.txt')
+			line = fl.readline()
+			counter = 1
+			line1 = 'SATELLITE'
+			while line:
+				if counter%2 ==1:
+					line2=line
+				else:
+					line3=line
+					sat=ephem.readtle(str(line1), str(line2),str(line3))
+					sat.compute(mwa)
+					x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]
+					if (0 <= x < 2000) and (0 <= y < 2000):
+						plt.plot(x,y, marker='.', color='yellow')
+						
+				counter += 1
+				line = fl.readline()
+			plt.scatter(maxPoint[1], maxPoint[0], s=80, facecolors='none', edgecolors='lime')
+			
+			
+			fl = open('tle.txt')
+			line = fl.readline()
+			counter = 1
+			line1 = 'SATELLITE'
+			while line:
+				if counter%2 ==1:
+					line2=line
+				else:
+					line3=line
+					sat=ephem.readtle(str(line1), str(line2),str(line3))
+					sat.compute(mwa)
+					x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]
+					if (0 <= x < 2000) and (0 <= y < 2000):
+						plt.plot(x,y, marker='+', color='white')
+				counter += 1
+				line = fl.readline()
+	
+			plt.grid()
+			
+
+			delay = [-6, -4, -2, 2, 4, 6]
+			
+			for d in delay:
+				time_temp = UTCtime + timedelta(seconds=int(d))
+				mwa.date = time
+				fl = open('tle.txt')
+				line = fl.readline()
+				counter = 1
+				line1 = 'SATELLITE'
+				while line:
+					if counter%2 ==1:
+						line2=line
+					else:
+						line3=line
+						sat=ephem.readtle(str(line1), str(line2),str(line3))
+						sat.compute(mwa)
+						x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]	
+						if (0 <= x < 2000) and (0 <= y < 2000):
+							plt.plot(x,y, marker=',', color='white')
+					counter += 1
+					line = fl.readline()
+
+
+
+			fl = open('MEOtle.txt')	
+			line = fl.readline()
+			counter = 1
+			line1 = 'SATELLITE'
+			while line:
+				if counter%2 ==1:
+					line2=line
+				else:
+					line3=line
+					sat=ephem.readtle(str(line1), str(line2),str(line3))
+					sat.compute(mwa)
+					x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]
+					if (0 <= x < 2000) and (0 <= y < 2000):
+						plt.plot(x,y, marker='+', color='green')	
+				counter += 1
+				line = fl.readline()	
+
+			for d in delay:
+                                time_temp = UTCtime + timedelta(seconds=int(d))
+                                mwa.date = time
+                                fl = open('MEOtle.txt')
+                                line = fl.readline()
+                                counter = 1
+                                line1 = 'SATELLITE'
+                                while line:
+                                        if counter%2 ==1:
+                                                line2=line
+                                        else:
+                                                line3=line
+                                                sat=ephem.readtle(str(line1), str(line2),str(line3))
+                                                sat.compute(mwa)
+                                                x, y = wcs.all_world2pix([[np.degrees(sat.ra.real), np.degrees(sat.dec.real)]], 1)[0]
+                                                if (0 <= x < 2000) and (0 <= y < 2000):
+                                                        plt.plot(x,y, marker=',', color='green')
+                                        counter += 1
+                                        line = fl.readline()
+
+
+
+
+			#plt.show()
+			plt.savefig("RFI-F" + str(f) + "-I" + str(i) + "-P" +str(p)+ "V2.png")
+			plt.clf()	
+				
+		
+if __name__ == "__main__":
+	main()		
+	
