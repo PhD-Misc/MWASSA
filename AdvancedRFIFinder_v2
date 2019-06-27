@@ -18,6 +18,8 @@ mwa.lon = '116:40:14.93485'
 mwa.lat = '-26:42:11.94986'
 mwa.elevation = 377.827 #from sea level
 
+manager = plt.get_current_fig_manager()
+manager.resize(*manager.window.maxsize())
 
 def main():
 	parser = ArgumentParser("Flagger", description="Flagges and plots DSNRS for RFI")
