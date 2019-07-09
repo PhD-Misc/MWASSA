@@ -205,7 +205,7 @@ def main():
 	parser.add_argument('--freqChannels', required=True,type=int, help="Number of frequency channels to process")
 	parser.add_argument('--timeStep', required=True, type=int, help="The timestep at which RFISeeker runs")
 	parser.add_argument('--seedSigma', default=8, help="The sigma threshold for RFI seeding" )
-	parser.add_argument('--floodfillSigma', default=6, help="The sigma upto which flood fill happens")
+	parser.add_argument('--floodfillSigma', default=3, help="The sigma upto which flood fill happens")
 	parser.add_argument('--debug', default=False, type=bool,help="Prints out more values and shows figure if ran in debug mode")
 	parser.add_argument('--plotStarlink', default=False,type=bool,help="Plots the location of the starlink constellation in a different color")
 	parser.add_argument('--imgSize',required=True, type=int, help="The size of the images")
