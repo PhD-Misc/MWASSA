@@ -1,0 +1,21 @@
+for i in `seq 1 48`;
+do
+
+        for j in `seq 1 16`;
+        do
+                f=$((i*j))
+                l=$((f-1))
+                python AdvancedRFIFinder_v2 --obs ${obsnum} --freq ${l} --timeSteps 150 --sigma 8 &
+        done
+        i=0
+        for job in `jobs -p`
+        do
+                pids[${i}]=${job}
+                i=$((i+1))
+        done
+        for pid in ${pids[*]}; do
+                wait ${pid}
+        done
+
+done
+
